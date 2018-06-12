@@ -25,7 +25,7 @@ parser.add_argument('--resume', '-r', action='store_true', help='resume from che
 parser.add_argument('--net', '-n', default='resnet18',type=str, help='define the name of the net')
 parser.add_argument('--epochs', '-e', default=200, type=int, help='total epochs')
 parser.add_argument('--sim_type', '-s', default='l1', type=str)
-parser.add_argument('--batch_size', '-b', default=32)
+parser.add_argument('--batch_size', '-b', default=32, type=int)
 args = parser.parse_args()
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
