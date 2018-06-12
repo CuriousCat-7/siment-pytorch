@@ -23,7 +23,7 @@ class Mex(nn.Module):
         self.dilation = helper(dilation)
         self.groups = groups
         self.beta = nn.Parameter(torch.Tensor(1).fill_(beta))
-        self.eps=1e-2
+        self.eps=eps
     def forward(self, x):
         N, C, H, W = x.shape
         HH, WW = self.kernel_size[0], self.kernel_size[1]
@@ -94,6 +94,7 @@ if __name__ == '__main__':
     conv.weight = sim.weight
     x = torch.rand(2,3,300,300).mul(1e-4)
     print x.shape
+    #print conv(x) - sim(x)
     x = sim(x)
     print x.shape
     x = mex(x)
