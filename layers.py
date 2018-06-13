@@ -59,7 +59,7 @@ class Similarity(nn.Conv2d):
         super(Similarity, self).__init__(in_channels, out_channels, kernel_size, 
         stride, padding, dilation, groups, bias=bias) # note that is will have bias para but none forever
         self.sim_type = sim_type
-        self.tamplate = nn.Parameter(torch.Tensor(self.weight.size())) if sim_type!='conv' else None
+        self.tamplate = nn.Parameter(torch.randn(self.weight.size())) if sim_type!='conv' else None
 
     def forward(self,x):
         N, C, H, W = x.shape
@@ -70,16 +70,31 @@ class Similarity(nn.Conv2d):
         w = self.weight.view(1, F, C*HH*WW, 1) # w.shape = 1, F, C*HH*WW, 1
         x = x.unsqueeze(1) # x.shape = B, 1, C*HH*WW, H_out*W_out
         if self.sim_type == 'conv':
-            x = w.mul(x).sum(-2) # outshape = B, F, H_out*W_out 
+            #x = w.mul(x).sum(-2) # outshape = B, F, H_out*W_out 
+            # using for loop it for avoid cude memory error when doing the expanding
+            out = []
+            for i in xrange(F):
+                out.append( w[:,i:i+1, :,:].mul(x).sum(-2) )
+            x = torch.cat(out, dim=1)
+
         elif self.sim_type == 'linear':
             t = self.tamplate.view_as(w)
-            x = w.mul(t).mul(x).sum(-2)
+            out = []
+            for i in xrange(F):
+                out.append(w.mul(t[:,i:i+1,:,:] ).mul(x[:,i:i+1,:,:]).sum(-2))
+            x = torch.cat(out, dim=1)
         elif self.sim_type == 'l1':
             t = self.tamplate.view_as(w)
-            x = x.sub(t).abs().mul(w).sum(-2)
+            out = []
+            for i in xrange(F):
+                out.append( x.sub(t[:,i:i+1,:,:]).abs().mul(w[:,i:i+1,:,:]).sum(-2) )
+            x = torch.cat(out, dim=1)
         elif self.sim_type == 'l2':
             t = self.tamplate.view_as(w)
-            x = x.sub(t).pow(2).mul(w).sum(-2)
+            out = []
+            for i in xrange(F):
+                out.append( x.sub(t[:,i:i+1,:,:]).pow(2).mul(w[:,i:i+1,:,:]).sum(-2) )
+            x = torch.cat(out, dim=1)
         else:
             raise Exception("unknow sim_type: {}".format(self.sim_type)) 
         if self.bias is not None :
@@ -92,10 +107,8 @@ if __name__ == '__main__':
     mex = Mex(2,2)
     conv = torch.nn.Conv2d(3, 4,(3,3),2,1, bias=True)
     conv.weight = sim.weight
-    x = torch.rand(2,3,300,300).mul(1e-4)
+    conv.bias = sim.bias
+    x = torch.rand(2,3,300,300).mul(1e-2)
     print x.shape
-    #print conv(x) - sim(x)
-    x = sim(x)
-    print x.shape
-    x = mex(x)
-    print x.shape
+    print (conv(x) - sim(x)).sum()
+    sim(x).sum().backward()
