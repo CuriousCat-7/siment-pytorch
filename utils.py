@@ -65,4 +65,7 @@ if __name__ == '__main__':
     from pytorch_cifar.models import *
     net = ResNet101()
     Replace()(net)
-    print net
+    net.cuda()
+    a = torch.rand(2,3,300,300).cuda()
+    for i in range(1000):
+        b = net(a).sum()
